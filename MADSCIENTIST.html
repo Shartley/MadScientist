@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mad Scientist — Bloom</title>
+<style>
+  :root{
+    --white:#F7F7F4;
+    --cool:#E5E7EB;
+    --lab:#B8C0C8;
+    --orange:#FF8A3D;
+    --purple:#7B5CC7;
+    --ink:#1f2937;
+    --danger:#8c4ea3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111827;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink);user-select:none}
+  button{font:inherit}
+  #game{position:relative;width:100vw;height:100vh;overflow:hidden;background:linear-gradient(#eef1f4 0 64%, #c6cbd0 64% 100%)}
+  #world{position:absolute;inset:0;transition:filter .2s ease, transform .2s ease;transform-origin:center}
+
+  /* lab architecture */
+  .ceiling{position:absolute;inset:0 0 auto 0;height:16%;background:linear-gradient(#f8fafb,#e8ecef);border-bottom:2px solid #c9cfd5}
+  .lightbar{position:absolute;top:4%;height:4.3%;width:24%;background:#fff;border:1px solid #d7dde2;box-shadow:0 0 24px rgba(255,255,255,.95);border-radius:4px}
+  .lightbar.l1{left:8%}.lightbar.l2{left:38%}.lightbar.l3{left:68%}
+  .backwall{position:absolute;left:0;right:0;top:16%;height:49%;background:linear-gradient(90deg,#e9edf0,#f8fafb 45%,#e8ecef);border-bottom:5px solid #9aa5ae}
+  .panel-lines{position:absolute;inset:0;background:linear-gradient(90deg,transparent 0 14%,rgba(152,162,171,.2) 14% 14.3%,transparent 14.3% 50%,rgba(152,162,171,.18) 50% 50.3%,transparent 50.3% 84%,rgba(152,162,171,.18) 84% 84.3%,transparent 84.3%);pointer-events:none}
+  .floor{position:absolute;left:0;right:0;bottom:0;height:35%;background:linear-gradient(#b8c0c8,#9ba5ad);clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}
+  .floor:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 13%,rgba(255,255,255,.13) 13% 13.2%),repeating-linear-gradient(0deg,transparent 0 28%,rgba(255,255,255,.12) 28% 28.5%)}
+
+  .cabinet{position:absolute;top:24%;height:34%;width:20%;background:linear-gradient(#f6f7f7,#dfe3e6);border:2px solid #9da7ae;border-radius:7px;box-shadow:0 8px 16px rgba(0,0,0,.12)}
+  .cabinet.left{left:3%}.cabinet.right{right:3%}
+  .cabinet .shelf{position:absolute;left:5%;right:5%;height:2px;background:#9fa8af}
+  .cabinet .s1{top:32%}.cabinet .s2{top:64%}
+  .cabinet .handle{position:absolute;right:8%;top:47%;width:4%;height:8%;background:#8f989f;border-radius:3px}
+
+  .workbench{position:absolute;left:25%;right:25%;top:43%;height:23%;background:linear-gradient(#f9faf9 0 18%,#d8dde1 18% 100%);border:2px solid #9ba5ab;border-radius:8px 8px 2px 2px;box-shadow:0 12px 22px rgba(0,0,0,.18)}
+  .workbench:before{content:"";position:absolute;left:4%;right:4%;top:-8%;height:10%;background:#f7f7f4;border:2px solid #aab2b8;border-radius:6px}
+  .drawer{position:absolute;left:6%;right:6%;top:31%;height:3px;background:#a6afb6}
+  .drawer:after{content:"";position:absolute;left:46%;top:-8px;width:8%;height:8px;border-radius:8px;background:#8f989f}
+
+  .monitor{position:absolute;left:37%;top:23%;width:26%;height:20%;background:#2f3c45;border:8px solid #dfe4e6;border-radius:10px;box-shadow:0 7px 0 #9aa3aa,0 12px 18px rgba(0,0,0,.15);cursor:pointer;z-index:5;overflow:hidden}
+  .monitor-screen{position:absolute;inset:3%;background:linear-gradient(145deg,#17222a,#233a40);border-radius:4px;color:#a8ffd4;padding:9px;font-family:Consolas,monospace;font-size:clamp(10px,1.1vw,16px);text-shadow:0 0 7px rgba(168,255,212,.45)}
+  .monitor-screen b{color:#ffb37d}
+  .monitor-screen .blink{animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:.15}}
+  .monitor:hover{outline:3px solid rgba(255,138,61,.75)}
+
+  .mixstation{position:absolute;left:34%;top:48%;width:32%;height:14%;border:3px solid #a9b1b6;background:linear-gradient(#f7f7f4,#e4e7e9);border-radius:8px;z-index:6;cursor:pointer;box-shadow:0 7px 14px rgba(0,0,0,.14)}
+  .mixstation:hover{outline:3px solid rgba(255,138,61,.75)}
+  .mixstation .glass{position:absolute;left:42%;top:12%;width:16%;height:55%;border:4px solid #8ea0aa;border-top:0;border-radius:0 0 14px 14px;background:linear-gradient(transparent 0 35%,rgba(123,92,199,.5) 35% 100%);transform:perspective(100px) rotateX(-2deg)}
+  .mixstation .label{position:absolute;left:4%;top:10%;font-weight:800;font-size:clamp(10px,1vw,15px);letter-spacing:.06em;color:#626d75}
+  .mixstation .button{position:absolute;right:6%;top:25%;width:12%;aspect-ratio:1;border-radius:50%;background:var(--orange);border:4px solid #b65c24;box-shadow:inset 0 3px 3px rgba(255,255,255,.35)}
+
+  .syringeDock{position:absolute;right:25%;top:43%;width:9%;height:7%;background:#f4f6f7;border:2px solid #aab2b7;border-radius:5px;z-index:7;display:flex;align-items:center;justify-content:center;cursor:pointer;transform:translateY(-5%)}
+  .syringeDock:hover{outline:3px solid rgba(255,138,61,.75)}
+  .syringe{width:72%;height:15%;background:linear-gradient(90deg,#e8f3f7 0 65%,var(--orange) 65% 78%,#dfe3e6 78%);border:2px solid #82939b;border-radius:4px;position:relative}
+  .syringe:after{content:"";position:absolute;right:-34%;top:35%;width:35%;height:2px;background:#7f8e95}
+
+  /* ingredient props */
+  #ingredientLayer{position:absolute;inset:0;z-index:12}
+  .ingredient{position:absolute;width:clamp(44px,4.7vw,74px);height:clamp(64px,7vw,100px);cursor:pointer;filter:drop-shadow(0 5px 4px rgba(0,0,0,.18));transition:transform .12s ease, opacity .2s ease}
+  .ingredient:hover{transform:translateY(-5px) scale(1.05)}
+  .ingredient.taken{opacity:0;pointer-events:none;transform:scale(.5)}
+  .bottle{position:absolute;left:18%;right:18%;top:20%;bottom:0;background:linear-gradient(90deg,#e7eef0,#fdfefe 44%,#d9e1e4);border:2px solid #7f9098;border-radius:8px 8px 13px 13px;overflow:hidden}
+  .cap{position:absolute;left:25%;right:25%;top:4%;height:19%;background:#697a82;border-radius:5px 5px 2px 2px;border:2px solid #52636b}
+  .liquid{position:absolute;left:0;right:0;bottom:0;height:48%;opacity:.68}
+  .bottleLabel{position:absolute;left:5%;right:5%;top:42%;background:#f7f7f4;border:1px solid #aab1b5;text-align:center;font-size:clamp(6px,.62vw,10px);font-weight:900;padding:3px 1px;line-height:1.05;color:#414d54}
+
+  .warningTape{position:absolute;left:0;right:0;top:63%;height:3%;background:repeating-linear-gradient(135deg,#ff8a3d 0 17px,#262f35 17px 34px);opacity:.85}
+
+  /* infected arm foreground */
+  #armWrap{position:absolute;right:-5%;bottom:-4%;width:min(48vw,700px);height:min(37vh,370px);z-index:25;pointer-events:none;transform:rotate(-6deg);transform-origin:right bottom}
+  #arm{position:absolute;right:0;bottom:0;width:92%;height:68%;background:linear-gradient(160deg,#d7a07e,#b8735c 70%,#925749);border-radius:52% 10% 8% 58%/70% 45% 45% 35%;box-shadow:inset 0 0 30px rgba(89,40,42,.25),0 12px 26px rgba(0,0,0,.2);overflow:hidden}
+  #hand{position:absolute;left:-5%;bottom:12%;width:37%;height:65%;background:linear-gradient(155deg,#dba382,#b9765d);border-radius:48% 28% 30% 48%;transform:rotate(-12deg);box-shadow:inset 0 0 20px rgba(89,40,42,.2)}
+  .vein{position:absolute;height:6px;border-radius:999px;background:rgba(83,44,123,.8);box-shadow:0 0 9px rgba(123,92,199,.7);transform-origin:left center;opacity:.25;transition:opacity .3s ease, width .3s ease}
+  .v1{left:18%;top:34%;width:36%;transform:rotate(11deg)}
+  .v2{left:39%;top:46%;width:42%;transform:rotate(-8deg)}
+  .v3{left:53%;top:30%;width:33%;transform:rotate(16deg)}
+  .v4{left:26%;top:58%;width:30%;transform:rotate(-15deg)}
+  #infectionTint{position:absolute;inset:0;background:radial-gradient(circle at 32% 48%,rgba(94,49,135,.4),transparent 26%),linear-gradient(90deg,rgba(123,92,199,.1),rgba(67,27,80,.5));mix-blend-mode:multiply;opacity:.1;transition:opacity .2s}
+  #needleMark{position:absolute;left:22%;top:42%;width:12px;height:12px;border-radius:50%;background:#692c58;border:3px solid rgba(255,218,218,.45);box-shadow:0 0 0 4px rgba(110,36,82,.25)}
+
+  /* HUD */
+  #hud{position:absolute;inset:0;z-index:40;pointer-events:none}
+  #timer{position:absolute;top:2.2%;left:50%;transform:translateX(-50%);font-size:clamp(22px,3vw,44px);font-weight:900;letter-spacing:.06em;color:#27323a;background:rgba(247,247,244,.92);padding:.2em .6em;border-radius:10px;border:2px solid #adb6bc;box-shadow:0 3px 10px rgba(0,0,0,.14)}
+  #timer.danger{color:#6f3f86;animation:pulse .55s infinite alternate}
+  @keyframes pulse{to{transform:translateX(-50%) scale(1.05)}}
+  #status{position:absolute;top:3%;left:2%;max-width:34%;background:rgba(247,247,244,.9);border-left:6px solid var(--orange);padding:10px 14px;border-radius:5px;font-weight:750;font-size:clamp(11px,1.1vw,16px);box-shadow:0 3px 10px rgba(0,0,0,.11)}
+  #infectionMeter{position:absolute;right:2%;top:3%;width:min(26vw,310px);background:rgba(247,247,244,.92);border-radius:8px;padding:9px 10px;border:1px solid #aab2b7}
+  #infectionMeter .meterLabel{font-size:11px;font-weight:900;letter-spacing:.08em;margin-bottom:5px;display:flex;justify-content:space-between}
+  .bar{height:12px;background:#d9dde0;border-radius:10px;overflow:hidden;border:1px solid #adb3b7}.fill{height:100%;width:0;background:linear-gradient(90deg,#b8a4dc,#7B5CC7,#593069);transition:width .25s}
+  #inventory{position:absolute;left:2%;bottom:3%;display:flex;gap:7px;flex-wrap:wrap;max-width:56%;pointer-events:auto}
+  .invChip{background:rgba(247,247,244,.93);border:2px solid #9ea8ae;border-radius:7px;padding:6px 9px;font-size:11px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  .invChip.selected{border-color:var(--orange);box-shadow:0 0 0 2px rgba(255,138,61,.25)}
+  #objective{position:absolute;right:2%;bottom:3%;background:rgba(31,41,55,.89);color:#fff;border-radius:8px;padding:9px 12px;font-size:12px;max-width:34%;text-align:right}
+
+  #infectionOverlay{position:absolute;inset:-5%;z-index:30;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,transparent 44%,rgba(70,25,84,.22) 70%,rgba(43,20,55,.5) 100%),repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 2px,rgba(0,0,0,.015) 2px 4px);mix-blend-mode:multiply;transition:opacity .2s}
+  #infectionOverlay:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 15% 50%,rgba(123,92,199,.22),transparent 32%),radial-gradient(circle at 85% 20%,rgba(123,92,199,.15),transparent 25%);animation:drift 1.8s ease-in-out infinite alternate}
+  @keyframes drift{to{transform:translate(1.5%,-1%);opacity:.7}}
+
+  /* overlays / modals */
+  .overlay{position:absolute;inset:0;z-index:100;background:rgba(18,24,29,.86);display:flex;align-items:center;justify-content:center;padding:22px}
+  .overlay.hidden{display:none}
+  .card{width:min(780px,94vw);background:var(--white);border-radius:16px;border:2px solid #aeb7bd;box-shadow:0 25px 70px rgba(0,0,0,.42);padding:clamp(18px,3vw,34px);text-align:center;position:relative}
+  .card h1{font-size:clamp(30px,5vw,62px);margin:0 0 8px;letter-spacing:.03em}
+  .card h2{font-size:clamp(23px,3vw,38px);margin:0 0 12px}
+  .card p{font-size:clamp(14px,1.4vw,18px);line-height:1.55;margin:9px 0}
+  .orange{color:var(--orange)}.purple{color:var(--purple)}
+  .startBtn,.actionBtn{border:0;border-radius:9px;background:var(--orange);color:#212b31;font-weight:900;padding:12px 24px;margin-top:16px;cursor:pointer;box-shadow:0 4px 0 #b95f28,0 8px 18px rgba(0,0,0,.2);transition:transform .1s}
+  .startBtn:active,.actionBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #b95f28}
+  .mini{font-size:12px!important;color:#66727a}
+  .cutscene{position:absolute;inset:0;z-index:120;background:#10171c;display:flex;align-items:center;justify-content:center;color:white;text-align:center;padding:20px;overflow:hidden}
+  .cutscene.hidden{display:none}
+  .cutscene .frame{width:min(900px,94vw);position:relative}
+  .cutscene .needleBig{font-size:clamp(70px,13vw,160px);filter:drop-shadow(0 8px 20px rgba(0,0,0,.4));animation:jab .8s ease .4s both}
+  @keyframes jab{0%{transform:translate(160px,-90px) rotate(-28deg)}60%{transform:translate(0,0) rotate(-28deg)}100%{transform:translate(12px,-8px) rotate(-28deg)}}
+  .cutscene h2{font-size:clamp(30px,5vw,60px);margin:.1em}.cutscene p{font-size:clamp(15px,1.7vw,22px);color:#d9e0e3}
+  .scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.02) 3px 4px)}
+
+  #formulaModal .formula{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0}
+  .formulaPiece{background:#26343a;color:#d5ffe8;border:2px solid #66777e;border-radius:8px;padding:10px 14px;font-family:Consolas,monospace;font-weight:800}
+  #mixModal .mixList{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:15px 0}
+  .mixChoice{border:2px solid #a8b0b5;border-radius:8px;padding:10px;background:white;cursor:pointer;font-weight:800}
+  .mixChoice.on{border-color:var(--orange);background:#fff1e7}
+  #mixMessage{min-height:24px;font-weight:800}
+  .secondaryBtn{border:2px solid #8f999f;border-radius:9px;background:#eef1f2;color:#3f4c53;font-weight:850;padding:10px 18px;margin:10px 4px 0;cursor:pointer}
+  .resultStats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:14px 0}.stat{background:#e9edf0;border-radius:9px;padding:9px 13px;font-weight:800}
+
+  #toast{position:absolute;left:50%;bottom:14%;transform:translateX(-50%) translateY(20px);z-index:130;background:#263238;color:#fff;padding:10px 15px;border-radius:8px;opacity:0;pointer-events:none;transition:.25s;font-weight:800;text-align:center;max-width:70%}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media(max-width:700px){
+    #status{max-width:48%} #objective{max-width:48%}.cabinet{width:23%}.cabinet.left{left:1%}.cabinet.right{right:1%}.workbench{left:20%;right:20%}.monitor{left:31%;width:38%}.mixstation{left:28%;width:44%}.syringeDock{right:19%}
+    #armWrap{width:62vw;height:31vh}
+  }
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="world">
+    <div class="ceiling"><div class="lightbar l1"></div><div class="lightbar l2"></div><div class="lightbar l3"></div></div>
+    <div class="backwall"><div class="panel-lines"></div></div>
+    <div class="floor"></div>
+    <div class="warningTape"></div>
+    <div class="cabinet left"><div class="shelf s1"></div><div class="shelf s2"></div><div class="handle"></div></div>
+    <div class="cabinet right"><div class="shelf s1"></div><div class="shelf s2"></div><div class="handle"></div></div>
+    <div class="monitor" id="monitor" title="Antidote computer">
+      <div class="monitor-screen">BIO-LOCK // ANTIDOTE DB<br><br><b>FORMULA:</b> [ENCRYPTED]<br>Click to authenticate_<span class="blink">█</span></div>
+    </div>
+    <div class="workbench"><div class="drawer"></div></div>
+    <div class="mixstation" id="mixstation" title="Mixing station">
+      <div class="label">ANTIDOTE<br>MIXER</div><div class="glass"></div><div class="button"></div>
+    </div>
+    <div class="syringeDock" id="syringeDock" title="Injection dock"><div class="syringe"></div></div>
+    <div id="ingredientLayer"></div>
+    <div id="armWrap"><div id="hand"></div><div id="arm"><div id="infectionTint"></div><div id="needleMark"></div><div class="vein v1"></div><div class="vein v2"></div><div class="vein v3"></div><div class="vein v4"></div></div></div>
+  </div>
+
+  <div id="infectionOverlay"></div>
+  <div id="hud">
+    <div id="timer">1:00</div>
+    <div id="status">Find the antidote formula.</div>
+    <div id="infectionMeter"><div class="meterLabel"><span>INFECTION</span><span id="infectionPct">0%</span></div><div class="bar"><div class="fill" id="infectionFill"></div></div></div>
+    <div id="inventory"></div>
+    <div id="objective">Click the computer → collect 3 ingredients → mix → inject.</div>
+  </div>
+
+  <div id="intro" class="overlay">
+    <div class="card">
+      <div style="font-size:54px">🧪</div>
+      <h1>MAD <span class="orange">SCIENTIST</span></h1>
+      <p><b>BLOOM:</b> A hidden infection is spreading through your body. You have <b>60 seconds</b> to identify the antidote formula, collect its ingredients, mix it, and inject yourself.</p>
+      <p class="mini">First-person point-and-click • Clinical sci-fi medical horror • Replayable randomized recipe</p>
+      <button class="startBtn" id="startBtn">BEGIN EXPERIMENT</button>
+    </div>
+  </div>
+
+  <div id="cutscene" class="cutscene hidden">
+    <div class="frame">
+      <div class="needleBig">💉</div>
+      <h2>ACCIDENTAL <span class="purple">EXPOSURE</span></h2>
+      <p>The infected needle barely broke the skin. The wound looks minor.</p>
+      <p><b>It isn't.</b></p>
+      <div class="scanlines"></div>
+    </div>
+  </div>
+
+  <div id="formulaModal" class="overlay hidden">
+    <div class="card">
+      <h2>ANTIDOTE FORMULA</h2>
+      <p>Computer match found. Collect these three compounds:</p>
+      <div class="formula" id="formulaList"></div>
+      <p class="mini">The formula stays recorded in your HUD after you close this window.</p>
+      <button class="actionBtn" id="closeFormula">SEARCH LAB</button>
+    </div>
+  </div>
+
+  <div id="mixModal" class="overlay hidden">
+    <div class="card">
+      <h2>MIXING STATION</h2>
+      <p>Select exactly <b>three</b> collected ingredients.</p>
+      <div class="mixList" id="mixList"></div>
+      <div id="mixMessage"></div>
+      <button class="actionBtn" id="mixBtn">MIX ANTIDOTE</button>
+      <button class="secondaryBtn" id="closeMix">RETURN</button>
+    </div>
+  </div>
+
+  <div id="ending" class="overlay hidden">
+    <div class="card" id="endingCard"></div>
+  </div>
+
+  <div id="toast"></div>
+</div>
+
+<script>
+(() => {
+  const INGREDIENTS = [
+    {id:'VIR-9', name:'Viral Suppressant', short:'VIR-9', color:'#8fd3ff'},
+    {id:'AG-N', name:'Silver Nitrate', short:'AG-N', color:'#d5dce2'},
+    {id:'STX', name:'Stabilizer X', short:'STX', color:'#ffb578'},
+    {id:'ANTI-B', name:'Antiserum B', short:'ANTI-B', color:'#a7e6b1'},
+    {id:'ENZ-4', name:'Enzyme 4', short:'ENZ-4', color:'#c2a7ec'},
+    {id:'AC-7', name:'Activated Carbon', short:'AC-7', color:'#72777c'}
+  ];
+
+  const slots = [
+    {left:7,top:28},{left:15,top:45},{left:5,top:50},
+    {left:78,top:29},{left:88,top:43},{left:79,top:51},
+    {left:28,top:39},{left:67,top:39},{left:31,top:56}
+  ];
+
+  let recipe=[], collected=new Set(), selectedMix=new Set();
+  let total=60, timeLeft=60, timerId=null, started=false, ended=false, formulaSeen=false, antidoteReady=false, wrongMixes=0, startStamp=0;
+  let toastTimer=null, audioCtx=null;
+
+  const $=id=>document.getElementById(id);
+  const world=$('world'), timer=$('timer'), status=$('status'), overlay=$('infectionOverlay');
+
+  function shuffle(a){ return [...a].sort(()=>Math.random()-.5); }
+  function beep(freq=620,dur=.08,type='sine',gain=.035){
+    try{
+      audioCtx ||= new (window.AudioContext||window.webkitAudioContext)();
+      const o=audioCtx.createOscillator(), g=audioCtx.createGain(); o.type=type;o.frequency.value=freq;g.gain.value=gain;o.connect(g);g.connect(audioCtx.destination);o.start();g.gain.exponentialRampToValueAtTime(.0001,audioCtx.currentTime+dur);o.stop(audioCtx.currentTime+dur);
+    }catch(e){}
+  }
+  function toast(msg){ const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1800); }
+
+  function setupGame(){
+    recipe=shuffle(INGREDIENTS).slice(0,3);
+    collected=new Set(); selectedMix=new Set(); timeLeft=total; ended=false; formulaSeen=false; antidoteReady=false; wrongMixes=0;
+    $('ingredientLayer').innerHTML=''; $('inventory').innerHTML='';
+    const placed=shuffle(slots).slice(0,INGREDIENTS.length);
+    shuffle(INGREDIENTS).forEach((ing,i)=>{
+      const el=document.createElement('div'); el.className='ingredient'; el.dataset.id=ing.id; el.style.left=placed[i].left+'%';el.style.top=placed[i].top+'%';
+      el.innerHTML=`<div class="cap"></div><div class="bottle"><div class="liquid" style="background:${ing.color}"></div><div class="bottleLabel">${ing.short}</div></div>`;
+      el.title=ing.name; el.addEventListener('click',()=>collectIngredient(ing,el)); $('ingredientLayer').appendChild(el);
+    });
+    timer.textContent='1:00';timer.classList.remove('danger');status.textContent='Find the antidote formula.';
+    $('objective').textContent='Click the computer → collect 3 ingredients → mix → inject.';
+    $('infectionFill').style.width='0%';$('infectionPct').textContent='0%';
+    world.style.filter='none';world.style.transform='none';overlay.style.opacity=0;$('infectionTint').style.opacity=.1;
+    document.querySelectorAll('.vein').forEach(v=>v.style.opacity=.25);
+    $('monitor').querySelector('.monitor-screen').innerHTML='BIO-LOCK // ANTIDOTE DB<br><br><b>FORMULA:</b> [ENCRYPTED]<br>Click to authenticate_<span class="blink">█</span>';
+  }
+
+  function begin(){
+    setupGame();$('intro').classList.add('hidden');$('cutscene').classList.remove('hidden');
+    beep(250,.18,'sawtooth',.04);
+    setTimeout(()=>{ if(ended)return; $('cutscene').classList.add('hidden'); started=true; startStamp=Date.now(); timerId=setInterval(tick,100); beep(780,.08); },2600);
+  }
+
+  function tick(){
+    if(!started||ended)return;
+    const elapsed=(Date.now()-startStamp)/1000;
+    timeLeft=Math.max(0,total-elapsed);
+    updateTime();updateInfection();
+    if(timeLeft<=0) fail();
+  }
+
+  function updateTime(){
+    const s=Math.ceil(timeLeft); timer.textContent=`0:${String(s).padStart(2,'0')}`; if(s===60)timer.textContent='1:00';
+    timer.classList.toggle('danger',timeLeft<=10);
+  }
+
+  function updateInfection(){
+    const p=Math.min(1,(total-timeLeft)/total); const pct=Math.round(p*100);
+    $('infectionFill').style.width=pct+'%';$('infectionPct').textContent=pct+'%';
+    let blur=0, sat=1, contrast=1, scale=1, wobble=0;
+    if(p>.28) blur=(p-.28)*3.8;
+    if(p>.50){sat=1-(p-.5)*.75;contrast=1+(p-.5)*.28;wobble=Math.sin(Date.now()/210)*Math.min(1.5,(p-.5)*4);}
+    if(p>.82){blur+= (p-.82)*9; scale=1+(p-.82)*.035;}
+    world.style.filter=`blur(${blur.toFixed(2)}px) saturate(${sat.toFixed(2)}) contrast(${contrast.toFixed(2)})`;
+    world.style.transform=`translate(${wobble.toFixed(2)}px,0) scale(${scale})`;
+    overlay.style.opacity=Math.max(0,(p-.22)*1.25);
+    $('infectionTint').style.opacity=Math.min(.78,.1+p*.8);
+    document.querySelectorAll('.vein').forEach((v,i)=>v.style.opacity=Math.min(1,.2+p*(.7+i*.05)));
+    if(Math.floor(timeLeft)===30 && !tick.warn30){tick.warn30=true;toast('30 seconds — infection spreading.');beep(360,.14,'square');}
+    if(Math.floor(timeLeft)===5 && !tick.warn5){tick.warn5=true;toast('5 seconds! INJECT NOW!');beep(220,.22,'sawtooth',.05);}
+  }
+
+  function collectIngredient(ing,el){
+    if(!started||ended)return;
+    if(!formulaSeen){toast('Check the computer first — you need the formula.');beep(300,.05);return;}
+    if(collected.has(ing.id))return;
+    collected.add(ing.id);el.classList.add('taken');beep(880,.07);
+    renderInventory();
+    const needed=recipe.some(x=>x.id===ing.id);
+    toast(`${ing.name} collected${needed?' — formula match!':''}`);
+    const neededCount=recipe.filter(x=>collected.has(x.id)).length;
+    status.textContent=neededCount===3?'All formula ingredients found. Use the mixer.':`Formula ingredients found: ${neededCount}/3`;
+  }
+
+  function renderInventory(){
+    const inv=$('inventory');inv.innerHTML='';
+    INGREDIENTS.filter(i=>collected.has(i.id)).forEach(ing=>{
+      const c=document.createElement('div');c.className='invChip'+(selectedMix.has(ing.id)?' selected':'');c.textContent=ing.short;c.title=ing.name;inv.appendChild(c);
+    });
+  }
+
+  function showFormula(){
+    if(!started||ended)return;
+    formulaSeen=true;
+    $('formulaList').innerHTML=recipe.map(x=>`<div class="formulaPiece">${x.short}<br><small>${x.name}</small></div>`).join('');
+    $('formulaModal').classList.remove('hidden');
+    $('monitor').querySelector('.monitor-screen').innerHTML=`BIO-LOCK // ANTIDOTE DB<br><br><b>FORMULA:</b><br>${recipe.map(x=>x.short).join(' + ')}<br><br>STATUS: URGENT`;
+    status.textContent='Collect the 3 compounds shown on the computer.';
+    $('objective').textContent=`FORMULA: ${recipe.map(x=>x.short).join(' + ')}`;beep(720,.08);
+  }
+
+  function openMixer(){
+    if(!started||ended)return;
+    if(!formulaSeen){toast('You do not know the formula yet.');return;}
+    if(collected.size<3){toast('Collect at least 3 ingredients first.');return;}
+    selectedMix.clear();$('mixMessage').textContent='';
+    $('mixList').innerHTML='';
+    INGREDIENTS.filter(i=>collected.has(i.id)).forEach(ing=>{
+      const b=document.createElement('button');b.className='mixChoice';b.textContent=`${ing.short} — ${ing.name}`;b.onclick=()=>{
+        if(selectedMix.has(ing.id)){selectedMix.delete(ing.id);b.classList.remove('on');}
+        else if(selectedMix.size<3){selectedMix.add(ing.id);b.classList.add('on');}
+        else toast('The mixer only accepts 3 compounds.');
+      };$('mixList').appendChild(b);
+    });
+    $('mixModal').classList.remove('hidden');
+  }
+
+  function mix(){
+    if(selectedMix.size!==3){$('mixMessage').textContent='Select exactly 3 ingredients.';beep(280,.06);return;}
+    const correct=recipe.every(r=>selectedMix.has(r.id));
+    if(correct){
+      antidoteReady=true;$('mixMessage').textContent='✓ ANTIDOTE STABILIZED — inject immediately!';$('mixMessage').style.color='#34744a';status.textContent='Antidote ready. Click the syringe dock to inject.';$('objective').textContent='ANTIDOTE READY — INJECT NOW';beep(980,.16,'sine',.06);
+      setTimeout(()=>$('mixModal').classList.add('hidden'),700);
+    }else{
+      wrongMixes++;$('mixMessage').textContent='✕ REACTION FAILED — wrong compounds. Infection accelerated!';$('mixMessage').style.color='#7b3f8e';beep(180,.18,'sawtooth',.05);
+      startStamp-=5000; // five-second penalty
+      selectedMix.clear();document.querySelectorAll('.mixChoice').forEach(x=>x.classList.remove('on'));
+    }
+  }
+
+  function inject(){
+    if(!started||ended)return;
+    if(!antidoteReady){toast('The syringe is empty. Mix the correct antidote first.');beep(300,.05);return;}
+    success();
+  }
+
+  function success(){
+    ended=true;started=false;clearInterval(timerId);beep(1100,.18,'sine',.06);setTimeout(()=>beep(1400,.2,'sine',.04),120);
+    world.style.filter='blur(0) saturate(1)';overlay.style.opacity=0;$('infectionTint').style.opacity=.12;
+    const used=(total-timeLeft).toFixed(1);
+    $('endingCard').innerHTML=`<div style="font-size:58px">💉🧬</div><h2>INFECTION <span style="color:#3c8c5a">CONTAINED</span></h2><p>The antidote floods your system. The purple veins recede, your vision clears, and the bloom stops before it can take over.</p><div class="resultStats"><div class="stat">Time: ${used}s</div><div class="stat">Wrong mixes: ${wrongMixes}</div><div class="stat">Remaining: ${Math.ceil(timeLeft)}s</div></div><button class="actionBtn" id="replayBtn">RUN EXPERIMENT AGAIN</button>`;
+    $('ending').classList.remove('hidden');$('replayBtn').onclick=replay;
+  }
+
+  function fail(){
+    if(ended)return;ended=true;started=false;clearInterval(timerId);beep(110,.6,'sawtooth',.07);
+    world.style.filter='blur(7px) saturate(.45) contrast(1.3)';overlay.style.opacity=.92;
+    $('endingCard').innerHTML=`<div style="font-size:64px">🧟</div><h2>FULL <span class="purple">BLOOM</span></h2><p>The infection reaches your nervous system before the antidote can be delivered. Your final human thought: <i>the formula was so close.</i></p><div class="resultStats"><div class="stat">Formula: ${recipe.map(x=>x.short).join(' + ')}</div><div class="stat">Wrong mixes: ${wrongMixes}</div></div><button class="actionBtn" id="replayBtn">TRY AGAIN</button>`;
+    $('ending').classList.remove('hidden');$('replayBtn').onclick=replay;
+  }
+
+  function replay(){
+    tick.warn30=false;tick.warn5=false;$('ending').classList.add('hidden');setupGame();started=true;startStamp=Date.now();timerId=setInterval(tick,100);beep(780,.08);
+  }
+
+  $('startBtn').onclick=begin;
+  $('monitor').onclick=showFormula;
+  $('closeFormula').onclick=()=>{ $('formulaModal').classList.add('hidden');beep(760,.04); };
+  $('mixstation').onclick=openMixer;
+  $('mixBtn').onclick=mix;
+  $('closeMix').onclick=()=>$('mixModal').classList.add('hidden');
+  $('syringeDock').onclick=inject;
+
+  setupGame();
+})();
+</script>
+</body>
+</html>
