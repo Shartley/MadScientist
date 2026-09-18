@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Mad Scientist — First Person</title>
+<style>
+  :root{
+    --white:#F7F7F4;
+    --cool:#E5E7EB;
+    --lab:#B8C0C8;
+    --orange:#FF8A3D;
+    --purple:#7B5CC7;
+    --ink:#1f2937;
+    --danger:#8c4ea3;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:#111827;font-family:Inter,Segoe UI,Arial,sans-serif;color:var(--ink);user-select:none}
+  button{font:inherit}
+  #game{position:relative;width:100vw;height:100vh;overflow:hidden;background:linear-gradient(#eef1f4 0 64%, #c6cbd0 64% 100%)}
+  #world{position:absolute;inset:0;transition:filter .2s ease, transform .2s ease;transform-origin:center}
+
+  /* lab architecture */
+  .ceiling{position:absolute;inset:0 0 auto 0;height:16%;background:linear-gradient(#f8fafb,#e8ecef);border-bottom:2px solid #c9cfd5}
+  .lightbar{position:absolute;top:4%;height:4.3%;width:24%;background:#fff;border:1px solid #d7dde2;box-shadow:0 0 24px rgba(255,255,255,.95);border-radius:4px}
+  .lightbar.l1{left:8%}.lightbar.l2{left:38%}.lightbar.l3{left:68%}
+  .backwall{position:absolute;left:0;right:0;top:16%;height:49%;background:linear-gradient(90deg,#e9edf0,#f8fafb 45%,#e8ecef);border-bottom:5px solid #9aa5ae}
+  .panel-lines{position:absolute;inset:0;background:linear-gradient(90deg,transparent 0 14%,rgba(152,162,171,.2) 14% 14.3%,transparent 14.3% 50%,rgba(152,162,171,.18) 50% 50.3%,transparent 50.3% 84%,rgba(152,162,171,.18) 84% 84.3%,transparent 84.3%);pointer-events:none}
+  .floor{position:absolute;left:0;right:0;bottom:0;height:35%;background:linear-gradient(#b8c0c8,#9ba5ad);clip-path:polygon(0 0,100% 0,100% 100%,0 100%)}
+  .floor:after{content:"";position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0 13%,rgba(255,255,255,.13) 13% 13.2%),repeating-linear-gradient(0deg,transparent 0 28%,rgba(255,255,255,.12) 28% 28.5%)}
+
+  .cabinet{position:absolute;top:24%;height:34%;width:20%;background:linear-gradient(#f6f7f7,#dfe3e6);border:2px solid #9da7ae;border-radius:7px;box-shadow:0 8px 16px rgba(0,0,0,.12)}
+  .cabinet.left{left:3%}.cabinet.right{right:3%}
+  .cabinet .shelf{position:absolute;left:5%;right:5%;height:2px;background:#9fa8af}
+  .cabinet .s1{top:32%}.cabinet .s2{top:64%}
+  .cabinet .handle{position:absolute;right:8%;top:47%;width:4%;height:8%;background:#8f989f;border-radius:3px}
+
+  .workbench{position:absolute;left:25%;right:25%;top:43%;height:23%;background:linear-gradient(#f9faf9 0 18%,#d8dde1 18% 100%);border:2px solid #9ba5ab;border-radius:8px 8px 2px 2px;box-shadow:0 12px 22px rgba(0,0,0,.18)}
+  .workbench:before{content:"";position:absolute;left:4%;right:4%;top:-8%;height:10%;background:#f7f7f4;border:2px solid #aab2b8;border-radius:6px}
+  .drawer{position:absolute;left:6%;right:6%;top:31%;height:3px;background:#a6afb6}
+  .drawer:after{content:"";position:absolute;left:46%;top:-8px;width:8%;height:8px;border-radius:8px;background:#8f989f}
+
+  .monitor{position:absolute;left:37%;top:23%;width:26%;height:20%;background:#2f3c45;border:8px solid #dfe4e6;border-radius:10px;box-shadow:0 7px 0 #9aa3aa,0 12px 18px rgba(0,0,0,.15);cursor:pointer;z-index:5;overflow:hidden}
+  .monitor-screen{position:absolute;inset:3%;background:linear-gradient(145deg,#17222a,#233a40);border-radius:4px;color:#a8ffd4;padding:9px;font-family:Consolas,monospace;font-size:clamp(10px,1.1vw,16px);text-shadow:0 0 7px rgba(168,255,212,.45)}
+  .monitor-screen b{color:#ffb37d}
+  .monitor-screen .blink{animation:blink 1s steps(1) infinite}
+  @keyframes blink{50%{opacity:.15}}
+  .monitor:hover{outline:3px solid rgba(255,138,61,.75)}
+
+  .mixstation{position:absolute;left:34%;top:48%;width:32%;height:14%;border:3px solid #a9b1b6;background:linear-gradient(#f7f7f4,#e4e7e9);border-radius:8px;z-index:6;cursor:pointer;box-shadow:0 7px 14px rgba(0,0,0,.14)}
+  .mixstation:hover{outline:3px solid rgba(255,138,61,.75)}
+  .mixstation .glass{position:absolute;left:42%;top:12%;width:16%;height:55%;border:4px solid #8ea0aa;border-top:0;border-radius:0 0 14px 14px;background:linear-gradient(transparent 0 35%,rgba(123,92,199,.5) 35% 100%);transform:perspective(100px) rotateX(-2deg)}
+  .mixstation .label{position:absolute;left:4%;top:10%;font-weight:800;font-size:clamp(10px,1vw,15px);letter-spacing:.06em;color:#626d75}
+  .mixstation .button{position:absolute;right:6%;top:25%;width:12%;aspect-ratio:1;border-radius:50%;background:var(--orange);border:4px solid #b65c24;box-shadow:inset 0 3px 3px rgba(255,255,255,.35)}
+
+  .syringeDock{position:absolute;right:25%;top:43%;width:9%;height:7%;background:#f4f6f7;border:2px solid #aab2b7;border-radius:5px;z-index:7;display:flex;align-items:center;justify-content:center;cursor:pointer;transform:translateY(-5%)}
+  .syringeDock:hover{outline:3px solid rgba(255,138,61,.75)}
+  .syringe{width:72%;height:15%;background:linear-gradient(90deg,#e8f3f7 0 65%,var(--orange) 65% 78%,#dfe3e6 78%);border:2px solid #82939b;border-radius:4px;position:relative}
+  .syringe:after{content:"";position:absolute;right:-34%;top:35%;width:35%;height:2px;background:#7f8e95}
+
+  /* ingredient props */
+  #ingredientLayer{position:absolute;inset:0;z-index:12}
+  .ingredient{position:absolute;width:clamp(44px,4.7vw,74px);height:clamp(64px,7vw,100px);cursor:pointer;filter:drop-shadow(0 5px 4px rgba(0,0,0,.18));transition:transform .12s ease, opacity .2s ease}
+  .ingredient:hover{transform:translateY(-5px) scale(1.05)}
+  .ingredient.taken{opacity:0;pointer-events:none;transform:scale(.5)}
+  .bottle{position:absolute;left:18%;right:18%;top:20%;bottom:0;background:linear-gradient(90deg,#e7eef0,#fdfefe 44%,#d9e1e4);border:2px solid #7f9098;border-radius:8px 8px 13px 13px;overflow:hidden}
+  .cap{position:absolute;left:25%;right:25%;top:4%;height:19%;background:#697a82;border-radius:5px 5px 2px 2px;border:2px solid #52636b}
+  .liquid{position:absolute;left:0;right:0;bottom:0;height:48%;opacity:.68}
+  .bottleLabel{position:absolute;left:5%;right:5%;top:42%;background:#f7f7f4;border:1px solid #aab1b5;text-align:center;font-size:clamp(6px,.62vw,10px);font-weight:900;padding:3px 1px;line-height:1.05;color:#414d54}
+
+  .warningTape{position:absolute;left:0;right:0;top:63%;height:3%;background:repeating-linear-gradient(135deg,#ff8a3d 0 17px,#262f35 17px 34px);opacity:.85}
+
+  /* infected arm foreground */
+  #armWrap{position:absolute;right:-5%;bottom:-4%;width:min(48vw,700px);height:min(37vh,370px);z-index:25;pointer-events:none;transform:rotate(-6deg);transform-origin:right bottom}
+  #arm{position:absolute;right:0;bottom:0;width:92%;height:68%;background:linear-gradient(160deg,#d7a07e,#b8735c 70%,#925749);border-radius:52% 10% 8% 58%/70% 45% 45% 35%;box-shadow:inset 0 0 30px rgba(89,40,42,.25),0 12px 26px rgba(0,0,0,.2);overflow:hidden}
+  #hand{position:absolute;left:-5%;bottom:12%;width:37%;height:65%;background:linear-gradient(155deg,#dba382,#b9765d);border-radius:48% 28% 30% 48%;transform:rotate(-12deg);box-shadow:inset 0 0 20px rgba(89,40,42,.2)}
+  .vein{position:absolute;height:6px;border-radius:999px;background:rgba(83,44,123,.8);box-shadow:0 0 9px rgba(123,92,199,.7);transform-origin:left center;opacity:.25;transition:opacity .3s ease, width .3s ease}
+  .v1{left:18%;top:34%;width:36%;transform:rotate(11deg)}
+  .v2{left:39%;top:46%;width:42%;transform:rotate(-8deg)}
+  .v3{left:53%;top:30%;width:33%;transform:rotate(16deg)}
+  .v4{left:26%;top:58%;width:30%;transform:rotate(-15deg)}
+  #infectionTint{position:absolute;inset:0;background:radial-gradient(circle at 32% 48%,rgba(94,49,135,.4),transparent 26%),linear-gradient(90deg,rgba(123,92,199,.1),rgba(67,27,80,.5));mix-blend-mode:multiply;opacity:.1;transition:opacity .2s}
+  #needleMark{position:absolute;left:22%;top:42%;width:12px;height:12px;border-radius:50%;background:#692c58;border:3px solid rgba(255,218,218,.45);box-shadow:0 0 0 4px rgba(110,36,82,.25)}
+
+  /* HUD */
+  #hud{position:absolute;inset:0;z-index:40;pointer-events:none}
+  #timer{position:absolute;top:2.2%;left:50%;transform:translateX(-50%);font-size:clamp(22px,3vw,44px);font-weight:900;letter-spacing:.06em;color:#27323a;background:rgba(247,247,244,.92);padding:.2em .6em;border-radius:10px;border:2px solid #adb6bc;box-shadow:0 3px 10px rgba(0,0,0,.14)}
+  #timer.danger{color:#6f3f86;animation:pulse .55s infinite alternate}
+  @keyframes pulse{to{transform:translateX(-50%) scale(1.05)}}
+  #status{position:absolute;top:3%;left:2%;max-width:34%;background:rgba(247,247,244,.9);border-left:6px solid var(--orange);padding:10px 14px;border-radius:5px;font-weight:750;font-size:clamp(11px,1.1vw,16px);box-shadow:0 3px 10px rgba(0,0,0,.11)}
+  #infectionMeter{position:absolute;right:2%;top:3%;width:min(26vw,310px);background:rgba(247,247,244,.92);border-radius:8px;padding:9px 10px;border:1px solid #aab2b7}
+  #infectionMeter .meterLabel{font-size:11px;font-weight:900;letter-spacing:.08em;margin-bottom:5px;display:flex;justify-content:space-between}
+  .bar{height:12px;background:#d9dde0;border-radius:10px;overflow:hidden;border:1px solid #adb3b7}.fill{height:100%;width:0;background:linear-gradient(90deg,#b8a4dc,#7B5CC7,#593069);transition:width .25s}
+  #inventory{position:absolute;left:2%;bottom:3%;display:flex;gap:7px;flex-wrap:wrap;max-width:56%;pointer-events:auto}
+  .invChip{background:rgba(247,247,244,.93);border:2px solid #9ea8ae;border-radius:7px;padding:6px 9px;font-size:11px;font-weight:800;box-shadow:0 2px 8px rgba(0,0,0,.12)}
+  .invChip.selected{border-color:var(--orange);box-shadow:0 0 0 2px rgba(255,138,61,.25)}
+  #objective{position:absolute;right:2%;bottom:3%;background:rgba(31,41,55,.89);color:#fff;border-radius:8px;padding:9px 12px;font-size:12px;max-width:34%;text-align:right}
+
+  #infectionOverlay{position:absolute;inset:-5%;z-index:30;pointer-events:none;opacity:0;background:radial-gradient(circle at 50% 50%,transparent 44%,rgba(70,25,84,.22) 70%,rgba(43,20,55,.5) 100%),repeating-linear-gradient(0deg,rgba(255,255,255,.018) 0 2px,rgba(0,0,0,.015) 2px 4px);mix-blend-mode:multiply;transition:opacity .2s}
+  #infectionOverlay:after{content:"";position:absolute;inset:0;background:radial-gradient(circle at 15% 50%,rgba(123,92,199,.22),transparent 32%),radial-gradient(circle at 85% 20%,rgba(123,92,199,.15),transparent 25%);animation:drift 1.8s ease-in-out infinite alternate}
+  @keyframes drift{to{transform:translate(1.5%,-1%);opacity:.7}}
+
+  /* overlays / modals */
+  .overlay{position:absolute;inset:0;z-index:100;background:rgba(18,24,29,.86);display:flex;align-items:center;justify-content:center;padding:22px}
+  .overlay.hidden{display:none}
+  .card{width:min(780px,94vw);background:var(--white);border-radius:16px;border:2px solid #aeb7bd;box-shadow:0 25px 70px rgba(0,0,0,.42);padding:clamp(18px,3vw,34px);text-align:center;position:relative}
+  .card h1{font-size:clamp(30px,5vw,62px);margin:0 0 8px;letter-spacing:.03em}
+  .card h2{font-size:clamp(23px,3vw,38px);margin:0 0 12px}
+  .card p{font-size:clamp(14px,1.4vw,18px);line-height:1.55;margin:9px 0}
+  .orange{color:var(--orange)}.purple{color:var(--purple)}
+  .startBtn,.actionBtn{border:0;border-radius:9px;background:var(--orange);color:#212b31;font-weight:900;padding:12px 24px;margin-top:16px;cursor:pointer;box-shadow:0 4px 0 #b95f28,0 8px 18px rgba(0,0,0,.2);transition:transform .1s}
+  .startBtn:active,.actionBtn:active{transform:translateY(3px);box-shadow:0 1px 0 #b95f28}
+  .mini{font-size:12px!important;color:#66727a}
+  .cutscene{position:absolute;inset:0;z-index:120;background:#10171c;display:flex;align-items:center;justify-content:center;color:white;text-align:center;padding:20px;overflow:hidden}
+  .cutscene.hidden{display:none}
+  .cutscene .frame{width:min(900px,94vw);position:relative}
+  .cutscene .needleBig{font-size:clamp(70px,13vw,160px);filter:drop-shadow(0 8px 20px rgba(0,0,0,.4));animation:jab .8s ease .4s both}
+  @keyframes jab{0%{transform:translate(160px,-90px) rotate(-28deg)}60%{transform:translate(0,0) rotate(-28deg)}100%{transform:translate(12px,-8px) rotate(-28deg)}}
+  .cutscene h2{font-size:clamp(30px,5vw,60px);margin:.1em}.cutscene p{font-size:clamp(15px,1.7vw,22px);color:#d9e0e3}
+  .scanlines{position:absolute;inset:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent 0 3px,rgba(255,255,255,.02) 3px 4px)}
+
+  #formulaModal .formula{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:18px 0}
+  .formulaPiece{background:#26343a;color:#d5ffe8;border:2px solid #66777e;border-radius:8px;padding:10px 14px;font-family:Consolas,monospace;font-weight:800}
+  #mixModal .mixList{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:8px;margin:15px 0}
+  .mixChoice{border:2px solid #a8b0b5;border-radius:8px;padding:10px;background:white;cursor:pointer;font-weight:800}
+  .mixChoice.on{border-color:var(--orange);background:#fff1e7}
+  #mixMessage{min-height:24px;font-weight:800}
+  .secondaryBtn{border:2px solid #8f999f;border-radius:9px;background:#eef1f2;color:#3f4c53;font-weight:850;padding:10px 18px;margin:10px 4px 0;cursor:pointer}
+  .resultStats{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin:14px 0}.stat{background:#e9edf0;border-radius:9px;padding:9px 13px;font-weight:800}
+
+  #toast{position:absolute;left:50%;bottom:14%;transform:translateX(-50%) translateY(20px);z-index:130;background:#263238;color:#fff;padding:10px 15px;border-radius:8px;opacity:0;pointer-events:none;transition:.25s;font-weight:800;text-align:center;max-width:70%}
+  #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+  @media(max-width:700px){
+    #status{max-width:48%} #objective{max-width:48%}.cabinet{width:23%}.cabinet.left{left:1%}.cabinet.right{right:1%}.workbench{left:20%;right:20%}.monitor{left:31%;width:38%}.mixstation{left:28%;width:44%}.syringeDock{right:19%}
+    #armWrap{width:62vw;height:31vh}
+  }
+
+/* First-person camera upgrade; original laboratory retained. */
+#world{width:200vw;height:140vh;inset:auto;left:-50vw;top:-20vh;transition:filter .25s;will-change:transform;transform-origin:center}
+#ingredientLayer{pointer-events:none}.ingredient{pointer-events:auto;width:58px;height:90px}.bottleLabel{font-size:11px;padding:6px 1px}.ingredient:after{content:attr(data-code);position:absolute;bottom:-20px;left:50%;transform:translateX(-50%);color:#28363b;font-size:12px;font-weight:800;white-space:nowrap;background:#ffffffca;border-radius:3px;padding:3px 7px}
+.cabinet{width:18%;top:27%;height:34%}.cabinet.left{left:23%}.cabinet.right{right:23%}.workbench{left:40%;right:40%;top:48%;height:20%}.monitor{left:44%;width:12%;top:30%;height:15%;border-width:7px}.monitor-screen{font-size:clamp(11px,1.1vw,17px);padding:12px}.mixstation{left:43%;width:14%;top:53%;height:11%}.syringeDock{right:39%;top:49%;width:5%;height:5%}.mixstation .label{font-size:12px}.warningTape{top:68%}.backwall{height:52%}.floor{height:32%}
+#hud{z-index:55}#status{top:28px;left:24px;border:0;color:#e6edee;background:#17262cbb;backdrop-filter:blur(6px);font-size:12px;letter-spacing:.1em;padding:12px 15px;max-width:34%;font-weight:700}#timer{background:none;border:0;box-shadow:none;color:#28363c;top:20px;font-size:44px;text-shadow:0 1px 0 white;letter-spacing:.04em}#infectionMeter{top:28px;background:#ffffffac;width:160px;padding:8px;right:24px;border:0}#infectionMeter .meterLabel{font-size:9px}.bar{height:5px;border:0}#inventory{left:24px;bottom:24px;gap:8px;max-width:70%}.invChip{font-size:12px;color:#fff;background:#18262ecc;border:1px solid #fff5;padding:9px 12px}.invChip.done{border-color:#8fd2b2;color:#b6f8d5}.invChip.held{border-color:#ff8a3d}#objective{left:50%;right:auto;bottom:12%;transform:translateX(-50%);max-width:85%;text-align:center;font-size:12px;letter-spacing:.05em;padding:8px 14px;border:1px solid #ffffff35;background:#17222bba;border-radius:5px;white-space:nowrap}
+#armWrap{position:absolute;left:-8%;right:auto;bottom:-12%;width:42vw;height:31vh;z-index:43;transform:rotate(12deg) scaleX(-1);filter:none;opacity:.97}#arm{background:linear-gradient(160deg,#c08d6b,#9c644c 70%,#784736)}#hand{background:linear-gradient(155deg,#c69575,#9c654c)}
+#crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:7px;height:7px;border:1px solid #fff;background:#36474b88;border-radius:50%;z-index:60;pointer-events:none;box-shadow:0 0 0 1px #27363b66}#crosshair.target{width:13px;height:13px;border-color:#ff9b5c;background:#ff8a3d44}#controlHint{position:absolute;bottom:23px;right:22px;z-index:65;font-size:10px;letter-spacing:.06em;color:#fff;background:#19282b77;padding:7px 10px;pointer-events:none}#reachHand{position:absolute;z-index:48;right:5%;bottom:-90px;width:280px;height:400px;pointer-events:none;transform-origin:75% 90%;filter:drop-shadow(0 10px 12px #0003)}#reachHand svg{position:absolute;inset:0;width:100%;height:100%}#heldProp{position:absolute;left:76px;top:28px;width:58px;height:93px;z-index:1;transform-origin:50% 80%}#heldProp .bottleLabel{font-size:10px}#heldProp.syringeProp{left:66px;top:47px;transform:rotate(-20deg);width:130px;height:60px}#heldProp .syringe{position:absolute;top:20px;width:83px;height:16px;background:linear-gradient(90deg,#91ddbe 0 65%,#ff8a3d 65% 78%,#dfe3e6 78%)}
+#pauseScreen{z-index:140}.card{background:#17232bed;color:#f7f7f4;border:1px solid #aeb7bd44;box-shadow:0 25px 70px #0006;border-radius:5px;width:min(600px,92vw);padding:42px}.card h1{font-size:clamp(35px,7vw,70px);line-height:.98;font-weight:900;letter-spacing:-.04em}.card p{font-size:14px;color:#d8dfe1;margin-top:19px}.card .mini{color:#b7c3c7;font-size:11px!important}.startBtn,.actionBtn{border-radius:3px;font-size:13px;letter-spacing:.06em;box-shadow:none;padding:14px 27px}.overlay{background:#10212bad;backdrop-filter:blur(5px)}.stat{background:#ffffff13;font-size:12px}.card h2{font-size:39px}#toast{bottom:20%;font-size:12px;background:#1e2d34e8;padding:9px 14px}#infectionOverlay{z-index:38}.aimed{outline:2px solid #ff8a3daa;outline-offset:5px}.ingredient.aimed{outline:0;filter:drop-shadow(0 0 8px #ff8a3d)}.mixstation.ready .glass{background:linear-gradient(transparent 0 15%,#87d5b5 15% 100%)}.mixstation.mixing .glass{animation:mixshake .13s infinite alternate}@keyframes mixshake{to{transform:rotate(5deg)}}#game.cured #infectionOverlay{opacity:0!important}#game.cured #world{filter:none!important}#game.cured .vein{opacity:.12!important}#game.cured #infectionTint{opacity:0!important}#flash{position:absolute;inset:0;z-index:80;background:#dcfff0;opacity:0;pointer-events:none}.soundButton{position:absolute;right:24px;top:85px;z-index:65;padding:7px 9px;border:1px solid #9eaeb3;background:#ffffffaa;color:#394950;border-radius:3px;font-size:10px}
+@media(max-width:700px){#status{top:17px;left:12px;font-size:10px;max-width:30%;padding:8px}#timer{top:13px;font-size:34px}#infectionMeter{right:12px;top:19px;width:105px}.soundButton{right:12px;top:66px}#reachHand{right:-15px;width:220px;height:330px;bottom:-85px}#heldProp{left:60px;top:23px;width:46px;height:75px}#armWrap{width:58vw;height:27vh;bottom:-8%}#inventory{bottom:48px;left:12px;gap:4px}.invChip{font-size:10px;padding:7px}#controlHint{bottom:12px;font-size:8px;right:12px}#objective{bottom:20%;font-size:10px}#toast{bottom:28%;font-size:11px}.card{padding:28px}.card p{font-size:12px}.monitor{left:42%;width:16%;top:30%;height:16%}.monitor-screen{font-size:11px;padding:7px}.mixstation{left:41%;width:18%}.syringeDock{right:35%;width:6%}.mixstation .label{font-size:8px}.ingredient{width:43px;height:66px}.bottleLabel{font-size:8px}.ingredient:after{font-size:10px}.cabinet.left{left:23%}.cabinet.right{right:23%}.cabinet{width:18%}.workbench{left:38%;right:38%}}
+
+</style>
+</head>
+<body>
+<div id="game">
+  <div id="world">
+    <div class="ceiling"><div class="lightbar l1"></div><div class="lightbar l2"></div><div class="lightbar l3"></div></div>
+    <div class="backwall"><div class="panel-lines"></div></div>
+    <div class="floor"></div>
+    <div class="warningTape"></div>
+    <div class="cabinet left"><div class="shelf s1"></div><div class="shelf s2"></div><div class="handle"></div></div>
+    <div class="cabinet right"><div class="shelf s1"></div><div class="shelf s2"></div><div class="handle"></div></div>
+    <div class="monitor" id="monitor" title="Antidote computer">
+      <div class="monitor-screen">BIO-LOCK // ANTIDOTE DB<br><br><b>FORMULA:</b> [ENCRYPTED]<br>Click to authenticate_<span class="blink">█</span></div>
+    </div>
+    <div class="workbench"><div class="drawer"></div></div>
+    <div class="mixstation" id="mixstation" title="Mixing station">
+      <div class="label">ANTIDOTE<br>MIXER</div><div class="glass"></div><div class="button"></div>
+    </div>
+    <div class="syringeDock" id="syringeDock" title="Injection dock"><div class="syringe"></div></div>
+    <div id="ingredientLayer"></div>
+    
+  </div>
+
+  <div id="armWrap"><div id="hand"></div><div id="arm"><div id="infectionTint"></div><div id="needleMark"></div><div class="vein v1"></div><div class="vein v2"></div><div class="vein v3"></div><div class="vein v4"></div></div></div><div id="infectionOverlay"></div>
+  <div id="hud">
+    <div id="timer">1:00</div>
+    <div id="status">Find the antidote formula.</div>
+    <div id="infectionMeter"><div class="meterLabel"><span>INFECTION</span><span id="infectionPct">0%</span></div><div class="bar"><div class="fill" id="infectionFill"></div></div></div>
+    <div id="inventory"></div>
+    <div id="objective">Click the computer → collect 3 ingredients → mix → inject.</div>
+  </div>
+
+  <div id="intro" class="overlay"><div class="card"><p class="mini">SIXTY SECONDS. BLOOM.</p><h1>MAD<br><span class="orange">SCIENTIST</span></h1><p>Find the formula. Mix the cure. Survive.</p><button class="startBtn" id="startBtn">ENTER LAB</button><p class="mini">Mouse: look · Click / E: use · Q: put down<br>Touch: drag to look, tap to use</p></div></div><div id="cutscene" class="cutscene hidden">
+    <div class="frame">
+      <div class="needleBig">💉</div>
+      <h2>ACCIDENTAL <span class="purple">EXPOSURE</span></h2>
+      <p>The infected needle barely broke the skin. The wound looks minor.</p>
+      <p><b>It isn't.</b></p>
+      <div class="scanlines"></div>
+    </div>
+  </div>
+
+  <div id="formulaModal" class="overlay hidden">
+    <div class="card">
+      <h2>ANTIDOTE FORMULA</h2>
+      <p>Computer match found. Collect these three compounds:</p>
+      <div class="formula" id="formulaList"></div>
+      <p class="mini">The formula stays recorded in your HUD after you close this window.</p>
+      <button class="actionBtn" id="closeFormula">SEARCH LAB</button>
+    </div>
+  </div>
+
+  <div id="mixModal" class="overlay hidden">
+    <div class="card">
+      <h2>MIXING STATION</h2>
+      <p>Select exactly <b>three</b> collected ingredients.</p>
+      <div class="mixList" id="mixList"></div>
+      <div id="mixMessage"></div>
+      <button class="actionBtn" id="mixBtn">MIX ANTIDOTE</button>
+      <button class="secondaryBtn" id="closeMix">RETURN</button>
+    </div>
+  </div>
+
+  <div id="ending" class="overlay hidden">
+    <div class="card" id="endingCard"></div>
+  </div>
+
+  <div id="toast"></div><div id="crosshair"></div><div id="controlHint">MOUSE: LOOK · CLICK / E: USE · Q: PUT DOWN · ESC: PAUSE</div><button class="soundButton" id="soundToggle">SOUND ON</button><div id="reachHand"><div id="heldProp" hidden></div><svg viewBox="0 0 280 400" fill="none" aria-hidden="true"><defs><linearGradient id="handSkin" x1="80" y1="70" x2="220" y2="340" gradientUnits="userSpaceOnUse"><stop stop-color="#c99470"/><stop offset="1" stop-color="#875039"/></linearGradient><linearGradient id="sleeve" x1="180" y1="230" x2="280" y2="380" gradientUnits="userSpaceOnUse"><stop stop-color="#fcfdf8"/><stop offset="1" stop-color="#b2bdc4"/></linearGradient></defs><path d="M134 109C117 100 113 89 99 89C87 88 84 97 90 107L108 127L103 145L86 124L81 90C80 78 66 77 65 91L67 133L77 161L94 182L127 219L181 299L237 262L175 170L159 130L151 91C148 78 135 79 135 94L140 122L134 109Z" fill="url(#handSkin)"/><path d="M112 125L102 86C99 75 87 78 89 91L97 137M131 124L122 82C119 71 106 74 108 89L114 139" fill="url(#handSkin)" stroke="#995f47" stroke-width="2" stroke-linecap="round"/><path d="M112 156Q128 143 146 151M138 182L158 170" stroke="#8e503d" stroke-width="2" opacity=".5"/><path d="M163 251L218 218L280 296L280 400L251 400Z" fill="url(#sleeve)"/><path d="M162 251L218 218L227 231L172 265Z" fill="#e6ebed" stroke="#9aa8b0" stroke-width="2"/></svg></div><div id="flash"></div><div id="pauseScreen" class="overlay hidden"><div class="card"><h2>PAUSED</h2><button id="resumeBtn" class="actionBtn">BACK TO LAB</button></div></div>
+</div>
+
+<script>
+
+(() => {
+'use strict';
+const $=id=>document.getElementById(id), world=$('world'), game=$('game');
+const items=[{id:'VIR-9',name:'VIR-9',color:'#8fd3ff',x:29,y:40},{id:'AG-N',name:'AG-N',color:'#d5dce2',x:35,y:49},{id:'STX',name:'STX',color:'#ffb578',x:26,y:53},{id:'ANTI-B',name:'ANTI-B',color:'#a7e6b1',x:62,y:40},{id:'ENZ-4',name:'ENZ-4',color:'#c2a7ec',x:69,y:49},{id:'AC-7',name:'AC-7',color:'#72777c',x:63,y:55}];
+let recipe=[],mixed=new Set(),held=null,known=false,ready=false,running=false,paused=false,ended=false,busy=false,time=60,spent=0,penalty=0,last=performance.now(),panX=0,panY=0,target=null,sound=true,ctx=null,toastId,handAnimation,propAnimation,scheduled=new Set(),beat=0,drag=null;
+const clamp=(v,a,b)=>Math.max(a,Math.min(b,v));
+const shuffle=a=>{a=[...a];for(let i=a.length-1;i>0;i--){let j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]];}return a};
+function delay(fn,ms){let id=setTimeout(()=>{scheduled.delete(id);fn()},ms);scheduled.add(id);return id}
+function beep(f=650,d=.1,g=.035){if(!sound)return;try{ctx ||= new (window.AudioContext||window.webkitAudioContext)();ctx.resume().catch(()=>{});let o=ctx.createOscillator(),v=ctx.createGain();o.frequency.value=f;v.gain.setValueAtTime(g,ctx.currentTime);v.gain.exponentialRampToValueAtTime(.0001,ctx.currentTime+d);o.connect(v);v.connect(ctx.destination);o.start();o.stop(ctx.currentTime+d);}catch{}}
+function toast(t){$('toast').textContent=t;$('toast').classList.add('show');clearTimeout(toastId);toastId=setTimeout(()=>$('toast').classList.remove('show'),1700)}
+function bottle(item){return `<div class="cap"></div><div class="bottle"><div class="liquid" style="background:${item.color}"></div><div class="bottleLabel">${item.id}</div></div>`}
+function lock(){if(matchMedia('(pointer:fine)').matches&&game.requestPointerLock){try{let p=game.requestPointerLock();if(p&&p.catch)p.catch(()=>toast('Drag to look · click to use'));}catch{}}}
+function ui(){
+$('inventory').innerHTML=known?recipe.map(i=>`<div class="invChip ${mixed.has(i.id)?'done':held?.id===i.id?'held':''}">${mixed.has(i.id)?'✓ ':''}${i.id}</div>`).join(''):'';
+$('status').textContent=!known?'FIND THE FORMULA':ready?'INJECT':mixed.size===3?'MIX THE CURE':`ANTIDOTE ${mixed.size}/3`;
+$('mixstation').classList.toggle('ready',ready);
+}
+function reset(){scheduled.forEach(clearTimeout);scheduled.clear();clearTimeout(toastId);handAnimation?.cancel();propAnimation?.cancel();document.querySelectorAll('.overlay').forEach(e=>e.classList.add('hidden'));$('cutscene').classList.add('hidden');$('toast').classList.remove('show');game.classList.remove('cured');$('flash').style.opacity=0;$('mixstation').classList.remove('mixing');
+recipe=shuffle(items).slice(0,3);mixed=new Set();held=null;known=false;ready=false;ended=false;busy=false;paused=false;time=60;spent=0;penalty=0;panX=0;panY=0;last=performance.now();beat=0;target=null;$('heldProp').hidden=true;$('heldProp').className='';$('heldProp').style.transform='';$('reachHand').style.transform='';
+const places=shuffle(items.map(i=>({x:i.x,y:i.y})));$('ingredientLayer').innerHTML=items.map((item,i)=>`<div class="ingredient" data-id="${item.id}" data-code="${item.id}" style="left:${places[i].x}%;top:${places[i].y}%" title="${item.id}">${bottle(item)}</div>`).join('');
+$('monitor').querySelector('.monitor-screen').innerHTML='BIO-LOCK<br><br><b>ANTIDOTE</b><br>ACCESS FORMULA <span class="blink">█</span>';ui();camera();
+}
+function begin(){reset();running=true;lock();beep(200,.18);toast('60 seconds. Find the cure.');}
+function camera(){world.style.transform=`translate(${panX}vw,${panY}vh)`;}
+function look(dx,dy){if(!running||paused||ended)return;panX=clamp(panX-dx*.075,-48,48);panY=clamp(panY-dy*.065,-18,20);camera();}
+function reach(el,mid,done,duration=680){
+busy=true;let r=el.getBoundingClientRect(),hand=$('reachHand'),hr=hand.getBoundingClientRect();let x=r.x+r.width/2-(hr.x+hr.width*.37),y=r.y+r.height*.45-(hr.y+hr.height*.3);x=clamp(x,-innerWidth*.88,innerWidth*.5);y=clamp(y,-innerHeight*.8,innerHeight*.3);
+handAnimation=hand.animate([{transform:'translate(0,0) rotate(0deg)'},{transform:`translate(${x}px,${y}px) rotate(-9deg)`,offset:.48},{transform:`translate(${x}px,${y}px) rotate(-9deg)`,offset:.66},{transform:'translate(0,0) rotate(0deg)'}],{duration,easing:'ease-in-out'});
+delay(()=>{if(running&&!ended)mid?.()},duration*.49);delay(()=>{if(!ended){busy=false;done?.()}},duration);
+}
+function readComputer(){reach($('monitor'),()=>{known=true;$('monitor').querySelector('.monitor-screen').innerHTML=`<b>ANTIDOTE</b><br><br>${recipe.map(i=>i.id).join('<br>')}`;beep(780);ui();});}
+function pickup(el){if(!known){toast('Read the computer.');return}if(ready)return;if(held){toast('Q: put down');return}const item=items.find(i=>i.id===el.dataset.id);if(!item||mixed.has(item.id))return;reach(el,()=>{held=item;el.classList.add('taken');$('heldProp').className='';$('heldProp').innerHTML=bottle(item);$('heldProp').hidden=false;beep(560,.06);ui()});}
+function putDown(){if(!held||busy||!running||paused)return;const item=held,el=document.querySelector(`[data-id="${item.id}"]`);reach(el,()=>{el.classList.remove('taken');held=null;$('heldProp').hidden=true;beep(390,.07);ui()});}
+function mixStation(){
+if(ready){toast('Use the injector.');return}
+if(held){const item=held;reach($('mixstation'),()=>{propAnimation=$('heldProp').animate([{transform:'rotate(0)'},{transform:'rotate(-105deg)'},{transform:'rotate(-105deg)'},{transform:'rotate(0)'}],{duration:500,easing:'ease-in-out'});beep(430,.19);delay(()=>{if(ended)return;held=null;$('heldProp').hidden=true;if(recipe.some(i=>i.id===item.id)){mixed.add(item.id);toast(`${item.id} added`)}else{time=Math.max(0,time-4);penalty+=4;document.querySelector(`[data-id="${item.id}"]`).classList.remove('taken');toast('Wrong compound. −4 sec');beep(150,.2)}ui()},280)},null,1000);return}
+if(mixed.size<3){toast('Add the three compounds.');return}
+busy=true;$('mixstation').classList.add('mixing');reach($('mixstation'),()=>{beep(340,.3);},()=>{busy=true;delay(()=>{if(ended)return;ready=true;busy=false;$('mixstation').classList.remove('mixing');beep(1050,.18);toast('Antidote ready. Inject.');ui()},700)});
+}
+function inject(){if(!ready){toast('Mix the antidote first.');return}reach($('syringeDock'),()=>{$('heldProp').className='syringeProp';$('heldProp').innerHTML='<div class="syringe"></div>';$('heldProp').hidden=false;},()=>{if(!running)return;time=Math.max(0,time);running=false;busy=true;reach($('needleMark'),()=>{},()=>{},650);delay(()=>{game.classList.add('cured');$('flash').animate([{opacity:0},{opacity:.7,offset:.3},{opacity:0}],{duration:1000});beep(950,.3);delay(()=>finish(true),700)},330)});}
+function act(el){if(!running||paused||ended||busy||!el)return;if(el.classList.contains('ingredient'))pickup(el);else if(el.id==='monitor')readComputer();else if(el.id==='mixstation')mixStation();else if(el.id==='syringeDock')inject();}
+function pickElement(el){return el?.closest?.('.ingredient:not(.taken),#monitor,#mixstation,#syringeDock')||null;}
+function finish(won){if(ended)return;ended=true;running=false;busy=false;scheduled.forEach(clearTimeout);scheduled.clear();if(document.pointerLockElement)document.exitPointerLock();$('pauseScreen').classList.add('hidden');$('endingCard').innerHTML=`<h2>${won?'INFECTION<br><span class="orange">CONTAINED</span>':'FULL <span class="purple">BLOOM</span>'}</h2><p>${won?`${spent.toFixed(1)} seconds`:'Too late.'}</p><button id="again" class="actionBtn">TRY AGAIN</button>`;$('ending').classList.remove('hidden');$('again').onclick=begin;if(!won)beep(110,.6);}
+function pause(){if(!running||ended||paused)return;paused=true;$('pauseScreen').classList.remove('hidden');handAnimation?.pause();propAnimation?.pause();}
+function resume(){paused=false;last=performance.now();$('pauseScreen').classList.add('hidden');handAnimation?.play();propAnimation?.play();lock();}
+function frame(now){let dt=Math.max(0,(now-last)/1000);last=now;if(running&&!paused&&!ended){time=Math.max(0,time-dt);spent+=dt;if(time<=0)finish(false)}
+let infection=clamp(1-time/60,0,1);$('timer').textContent=time>=60?'1:00':`0:${String(Math.ceil(time)).padStart(2,'0')}`;$('timer').classList.toggle('danger',time<=10);$('infectionFill').style.width=infection*100+'%';$('infectionPct').textContent=Math.round(infection*100)+'%';if(!game.classList.contains('cured')){world.style.filter=`blur(${Math.max(0, infection-.35)*3.7}px) saturate(${1-infection*.3})`;$('infectionOverlay').style.opacity=infection*.9;$('infectionTint').style.opacity=.1+infection*.7;document.querySelectorAll('.vein').forEach(v=>v.style.opacity=.2+infection*.8)}
+if(running&&!paused){let el=pickElement(document.elementFromPoint(innerWidth/2,innerHeight/2));if(el!==target){target?.classList.remove('aimed');target=el;target?.classList.add('aimed')}$('crosshair').classList.toggle('target',!!target);let label=busy?'':target?.classList.contains('ingredient')?(held?'Q · Put down':`Pick up ${target.dataset.id}`):target?.id==='monitor'?'Read formula':target?.id==='mixstation'?(held?'Pour compound':ready?'Antidote ready':mixed.size===3?'Mix antidote':'Add compounds'):target?.id==='syringeDock'?(ready?'Inject antidote':'Empty injector'):held?'Q · Put down':'';$('objective').textContent=label;$('objective').style.display=label?'block':'none';if(time<40&&now-beat>(time<15?650:1100)){beat=now;beep(62,.14,.045);delay(()=>beep(50,.12,.025),160)}}requestAnimationFrame(frame)}
+$('startBtn').onclick=begin;$('resumeBtn').onclick=resume;$('soundToggle').onclick=()=>{sound=!sound;$('soundToggle').textContent=sound?'SOUND ON':'SOUND OFF'};
+document.addEventListener('mousemove',e=>{if(document.pointerLockElement===game)look(e.movementX,e.movementY)});
+game.addEventListener('pointerdown',e=>{if(!running||paused)return;if(document.pointerLockElement!==game)drag={x:e.clientX,y:e.clientY,lastX:e.clientX,lastY:e.clientY,moved:false,type:e.pointerType};});
+game.addEventListener('pointermove',e=>{if(!drag||document.pointerLockElement===game)return;const dx=e.clientX-drag.lastX,dy=e.clientY-drag.lastY;if(Math.hypot(e.clientX-drag.x,e.clientY-drag.y)>5)drag.moved=true;if(drag.moved)look(dx,dy);drag.lastX=e.clientX;drag.lastY=e.clientY;});
+game.addEventListener('pointerup',e=>{if(drag){const moved=drag.moved;drag=null;if(moved)return;if(e.target.closest('button,.overlay'))return;act(pickElement(e.target));}else if(document.pointerLockElement===game&&!e.target.closest('button,.overlay'))act(target)});
+game.addEventListener('contextmenu',e=>e.preventDefault());game.style.touchAction='none';
+document.addEventListener('keydown',e=>{if(e.repeat)return;if(e.code==='KeyE'){e.preventDefault();act(target)}if(e.code==='KeyQ'){e.preventDefault();putDown()}if(e.code==='Escape'&&!document.pointerLockElement){if(paused)resume();else pause()}});
+document.addEventListener('pointerlockchange',()=>{if(!document.pointerLockElement&&running&&!ended)pause()});document.addEventListener('visibilitychange',()=>{if(document.hidden)pause()});
+reset();$('intro').classList.remove('hidden');requestAnimationFrame(frame);
+})();
+
+</script>
+</body>
+</html>
